@@ -1,19 +1,34 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Boolean, Table, Column, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 db = SQLAlchemy()
 
+
+favorite_table = Table(
+    "favorites",
+    db.Model.metadata,
+    Column("user_id", ForeignKey("user.id"), primary_key=True),
+    Column("character_id", ForeignKey("character.id"), primary_key=True),
+)
+
+
 class User(db.Model):
+    __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(nullable=False)
-
+    favorites: Mapped[list["Character"]] = relationship(
+        "Character",
+        secondary= favorite_table,
+        back_populates="favorited_by"
+    )
 
     def serialize(self):
         return {
             "id": self.id,
             "email": self.email,
+            "favorites": self.favorites
             
         }
 
@@ -21,10 +36,14 @@ class Character(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120),nullable=False)
     quote: Mapped[str] = mapped_column(String(120),nullable=False)
-    image: Mapped[str] = mapped_column(String(120),nullable=False)
+    image: Mapped[str] = mapped_column(String(120),nullable=True)
     job: Mapped[str] = mapped_column(String(120),nullable=False)
     age: Mapped[str] = mapped_column(String(120),nullable=False)
-
+    favorited_by: Mapped[list["User"]] = relationship(
+        "User",
+        secondary= favorite_table,
+        back_populates="favorites"
+    )
     def serialize(self):
         return {
             "id": self.id,
@@ -32,5 +51,6 @@ class Character(db.Model):
             "quote": self.quote,
             "image": self.image,
             "job": self.job,
-            "age": self.age
+            "age": self.age,
+            "favorited": self.favorited_by
         }
